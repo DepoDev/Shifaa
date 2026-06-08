@@ -56,6 +56,14 @@ namespace Shifaa.Areas.Identity.Controllers
             return StatusCode(result.StatusCode, new { success = result.Success, message = result.Message, data = result.Data });
         }
 
+        [HttpPost("logout")]
+        [Authorize]
+        public async Task<IActionResult> Logout()
+        {
+            var result = await _authService.LogoutAsync();
+            return StatusCode(result.StatusCode, new { success = result.Success, message = result.Message });
+        }
+
         [HttpPost("switch-role")]
         [Authorize]
         public async Task<IActionResult> SwitchRole([FromBody] SwitchRoleRequest request)

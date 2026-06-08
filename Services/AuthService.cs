@@ -10,6 +10,7 @@ namespace Shifaa.Services
     public class AuthService : IAuthService
     {
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly ApplicationDbContext _context;
         private readonly IJwtHandler _jwtHandler;
         private readonly IEmailSender _emailSender;
@@ -23,6 +24,7 @@ namespace Shifaa.Services
 
         public AuthService(
             UserManager<ApplicationUser> userManager,
+            SignInManager<ApplicationUser> signInManager,
             ApplicationDbContext context,
             IJwtHandler jwtHandler,
             IEmailSender emailSender,
@@ -35,6 +37,7 @@ namespace Shifaa.Services
             IFileService fileService)
         {
             _userManager = userManager;
+            _signInManager = signInManager;
             _context = context;
             _jwtHandler = jwtHandler;
             _emailSender = emailSender;
@@ -426,6 +429,7 @@ namespace Shifaa.Services
 
             // Validate that user has the requested role
             var selectedRoleString = request.Role.ToString();
+
             if (!userRoles.Contains(selectedRoleString))
                 return ServiceResult<AuthenticatedResponse>.Fail(
                     $"User does not have the {selectedRoleString} role.", 400);
@@ -443,11 +447,27 @@ namespace Shifaa.Services
                 {
                     AccessToken = accessToken,
                     RefreshToken = refreshToken,
-                    SelectedRole = (UserType)(int)request.Role,
+                    SelectedRole = request.Role,
                     AvailableRoles = availableRoles,
                     RedirectUrl = GetRedirectUrl(request.Role)
                 },
                 "Login successful.");
+        }
+
+
+        // ── LOGOUT ─────────────────────────────────────────────────────────
+        public async Task<ServiceResult<AuthenticatedResponse>> LogoutAsync()
+        {
+            await _signInManager.SignOutAsync();
+            return ServiceResult<AuthenticatedResponse>.Ok(
+                new AuthenticatedResponse
+                {
+                    AccessToken = null,
+                    RefreshToken = null,
+                    AvailableRoles = null,
+                    RedirectUrl = null
+                },
+                "Logout successful.");
         }
 
         // ── FORGOT PASSWORD ───────────────────────────────────────────────
@@ -665,14 +685,14 @@ namespace Shifaa.Services
         /// <summary>
         /// Determines redirect URL based on user role
         /// </summary>
-        private string GetRedirectUrl(Role role)
+        private string GetRedirectUrl(UserType role)
         {
             return role switch
             {
-                Role.Member => "/member/dashboard",
-                Role.Caregiver => "/caregiver/dashboard",
-                Role.Doctor => "/doctor/dashboard",
-                Role.MedicalCenter => "/medical-center/dashboard",
+                UserType.Member => "/member/dashboard",
+                UserType.Caregiver => "/caregiver/dashboard",
+                UserType.Doctor => "/doctor/dashboard",
+                UserType.MedicalCenter => "/medical-center/dashboard",
                 _ => "/"
             };
         }
@@ -681,7 +701,7 @@ namespace Shifaa.Services
         /// Switches user to a different role for the current session
         /// </summary>
         public async Task<ServiceResult<AuthenticatedResponse>> SwitchRoleAsync(
-            string userId, Role newRole)
+            string userId, UserType newRole)
         {
             var user = await _userManager.FindByIdAsync(userId);
             if (user is null || user.IsDeleted)

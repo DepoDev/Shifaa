@@ -1,4 +1,6 @@
-﻿namespace Shifaa.Services
+﻿using static Shifaa.Models.Enums;
+
+namespace Shifaa.Services
 {
     public interface IAuthService
     {
@@ -7,7 +9,8 @@
         Task<ServiceResult> RegisterDoctorAsync(DoctorRegisterRequest request);
         Task<ServiceResult> RegisterMedicalCenterAsync(MedicalCenterRegisterRequest request);
         Task<ServiceResult<AuthenticatedResponse>> LoginAsync(LoginRequest request);
-        Task<ServiceResult<AuthenticatedResponse>> SwitchRoleAsync(string userId, Role newRole);
+        Task<ServiceResult<AuthenticatedResponse>> LogoutAsync();
+        Task<ServiceResult<AuthenticatedResponse>> SwitchRoleAsync(string userId, UserType newRole);
         Task<ServiceResult> ForgotPasswordAsync(string email);
         Task<ServiceResult> ValidateOtpAsync(ValidateOTPRequest request);
         Task<ServiceResult> ResetPasswordAsync(ResetPasswordRequest request);
