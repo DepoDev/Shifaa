@@ -35,7 +35,7 @@ namespace Shifaa.Utilities
                     EnsureRoleExists(SD.ADMIN_ROLE);
                     EnsureRoleExists(SD.DOCTOR_ROLE);
                     EnsureRoleExists(SD.MEMBER_ROLE);
-                    EnsureRoleExists(SD.CARE_GIVER_ROLE);
+                    EnsureRoleExists(SD.CAREGIVER_ROLE);
                     EnsureRoleExists(SD.MEDICAL_CENTER_ROLE);
 
                     var superAdmin = _userManager
