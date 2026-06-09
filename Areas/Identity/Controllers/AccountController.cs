@@ -1,10 +1,11 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Shifaa.Services;
-using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 namespace Shifaa.Areas.Identity.Controllers
 {
-    [Route("[Area]/[controller]")]
+    [Route("api/v1/auth")]
     [ApiController]
     [Area("Identity")]
     public class AccountController : ControllerBase
@@ -60,7 +61,11 @@ namespace Shifaa.Areas.Identity.Controllers
         [Authorize]
         public async Task<IActionResult> Logout()
         {
-            var result = await _authService.LogoutAsync();
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized(new { success = false, message = "User not authenticated." });
+
+            var result = await _authService.LogoutAsync(userId);
             return StatusCode(result.StatusCode, new { success = result.Success, message = result.Message });
         }
 

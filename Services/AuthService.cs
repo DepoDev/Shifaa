@@ -188,8 +188,8 @@ namespace Shifaa.Services
 
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
-
-                await SendEmailConfirmationAsync(user);
+                if (!user.EmailConfirmed)
+                    await SendEmailConfirmationAsync(user);
 
                 return ServiceResult.Ok(
                     "Registration successful. Please confirm your email to continue.");
@@ -484,9 +484,16 @@ namespace Shifaa.Services
 
 
         // ── LOGOUT ─────────────────────────────────────────────────────────
-        public async Task<ServiceResult> LogoutAsync()
+        // Interface: Task<ServiceResult> LogoutAsync(string userId);
+        public async Task<ServiceResult> LogoutAsync(string userId)
         {
-            await _signInManager.SignOutAsync();
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user is null) return ServiceResult.Fail("User not found.", 404);
+
+            user.RefreshToken = null;
+            user.RefreshTokenExpiryTime = DateTime.UtcNow;
+            await _userManager.UpdateAsync(user);
+
             return ServiceResult.Ok("Logout successful.");
         }
 
@@ -512,7 +519,7 @@ namespace Shifaa.Services
                     "Too many OTP requests. Please try again tomorrow.", 429);
 
             // Generate 6-digit OTP
-            var otp = new Random().Next(100000, 999999).ToString();
+            var otp = new Random().Next(1000, 10000).ToString();
 
             // Save OTP to database
             var otpRecord = new ApplicationUserOTP(otp, user.Id);
@@ -566,9 +573,9 @@ namespace Shifaa.Services
 
             // Verify there's a valid, used OTP for this user (meaning they passed OTP validation)
             var usedOtp = await _otpRepository
-                .GetOneAsync(otp => otp.ApplicationUserId == request.ApplicationUserId &&
-                                    !otp.IsValid &&
-                                    otp.ExpireAt > DateTime.UtcNow.AddMinutes(-10));
+                           .GetOneAsync(otp => otp.ApplicationUserId == request.ApplicationUserId &&
+                           !otp.IsValid &&
+                           otp.ExpireAt > DateTime.UtcNow); // still in valid window
 
             if (usedOtp is null)
                 return ServiceResult.Fail(
@@ -613,7 +620,14 @@ namespace Shifaa.Services
                 return ServiceResult<AuthenticatedResponse>.Fail(
                     "Invalid refresh token or expired.", 401);
 
-            var newAccessToken = await _jwtHandler.GenerateAccessTokenAsync(user);
+            // Extract the active role from the expired token's claims
+            var activeRole = principal.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+
+
+
+            var newAccessToken = activeRole is not null
+                                 ? await _jwtHandler.GenerateAccessTokenAsync(user, activeRole)
+                                 : await _jwtHandler.GenerateAccessTokenAsync(user);
             var newRefreshToken = _jwtHandler.GenerateRefreshToken();
 
             user.RefreshToken = newRefreshToken;
