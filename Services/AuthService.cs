@@ -93,8 +93,14 @@ namespace Shifaa.Services
                         return ServiceResult.Fail(
                             string.Join(", ", result.Errors.Select(e => e.Description)));
 
-                    await _userManager.AddToRoleAsync(user, SD.MEMBER_ROLE);
-
+                    var roleResult = await _userManager.AddToRoleAsync(user, SD.MEMBER_ROLE);
+                    if (!roleResult.Succeeded)
+                    {
+                        // Rollback the user creation since role assignment failed
+                        await _userManager.DeleteAsync(user);
+                        return ServiceResult.Fail(
+                            $"Failed to assign Member role: {string.Join(", ", roleResult.Errors.Select(e => e.Description))}", 500);
+                    }
                     // Create empty profile — member fills it after first login
                     await _memberRepository.AddAsync(new Member 
                     { 
@@ -106,6 +112,7 @@ namespace Shifaa.Services
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
+                if (!user.EmailConfirmed)
                 await SendEmailConfirmationAsync(user);
 
                 return ServiceResult.Ok(
@@ -161,7 +168,14 @@ namespace Shifaa.Services
                         return ServiceResult.Fail(
                             string.Join(", ", result.Errors.Select(e => e.Description)));
 
-                    await _userManager.AddToRoleAsync(user, "Caregiver");
+                    var roleResult = await _userManager.AddToRoleAsync(user, "Caregiver");
+                    if (!roleResult.Succeeded)
+                    {
+                        // Rollback the user creation since role assignment failed
+                        await _userManager.DeleteAsync(user);
+                        return ServiceResult.Fail(
+                            $"Failed to assign Caregiver role: {string.Join(", ", roleResult.Errors.Select(e => e.Description))}", 500);
+                    }
 
                     // Create empty profile — caregiver fills it after first login
                     // RelationshipType is NOT here — it's per GuardianMember link
@@ -255,7 +269,14 @@ namespace Shifaa.Services
                         return ServiceResult.Fail(
                             string.Join(", ", result.Errors.Select(e => e.Description)));
 
-                    await _userManager.AddToRoleAsync(user, "Doctor");
+                    var roleResult = await _userManager.AddToRoleAsync(user, "Doctor");
+                    if (!roleResult.Succeeded)
+                    {
+                        // Rollback the user creation since role assignment failed
+                        await _userManager.DeleteAsync(user);
+                        return ServiceResult.Fail(
+                            $"Failed to assign Doctor role: {string.Join(", ", roleResult.Errors.Select(e => e.Description))}", 500);
+                    }
 
                     var folderPath = $"Uploads/DoctorVerification/{user.Id}";
                     var syndicateCardFile = await _fileService
@@ -362,7 +383,14 @@ namespace Shifaa.Services
                         return ServiceResult.Fail(
                             string.Join(", ", result.Errors.Select(e => e.Description)));
 
-                    await _userManager.AddToRoleAsync(user, "MedicalCenter");
+                    var roleResult = await _userManager.AddToRoleAsync(user, "MedicalCenter");
+                    if (!roleResult.Succeeded)
+                    {
+                        // Rollback the user creation since role assignment failed
+                        await _userManager.DeleteAsync(user);
+                        return ServiceResult.Fail(
+                            $"Failed to assign MedicalCenter role: {string.Join(", ", roleResult.Errors.Select(e => e.Description))}", 500);
+                    }
 
                     await _medicalCenterRepository.AddAsync(new MedicalCenter
                     {
@@ -456,18 +484,10 @@ namespace Shifaa.Services
 
 
         // ── LOGOUT ─────────────────────────────────────────────────────────
-        public async Task<ServiceResult<AuthenticatedResponse>> LogoutAsync()
+        public async Task<ServiceResult> LogoutAsync()
         {
             await _signInManager.SignOutAsync();
-            return ServiceResult<AuthenticatedResponse>.Ok(
-                new AuthenticatedResponse
-                {
-                    AccessToken = null,
-                    RefreshToken = null,
-                    AvailableRoles = null,
-                    RedirectUrl = null
-                },
-                "Logout successful.");
+            return ServiceResult.Ok("Logout successful.");
         }
 
         // ── FORGOT PASSWORD ───────────────────────────────────────────────

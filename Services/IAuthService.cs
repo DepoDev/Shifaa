@@ -9,7 +9,7 @@ namespace Shifaa.Services
         Task<ServiceResult> RegisterDoctorAsync(DoctorRegisterRequest request);
         Task<ServiceResult> RegisterMedicalCenterAsync(MedicalCenterRegisterRequest request);
         Task<ServiceResult<AuthenticatedResponse>> LoginAsync(LoginRequest request);
-        Task<ServiceResult<AuthenticatedResponse>> LogoutAsync();
+        Task<ServiceResult> LogoutAsync();
         Task<ServiceResult<AuthenticatedResponse>> SwitchRoleAsync(string userId, UserType newRole);
         Task<ServiceResult> ForgotPasswordAsync(string email);
         Task<ServiceResult> ValidateOtpAsync(ValidateOTPRequest request);
